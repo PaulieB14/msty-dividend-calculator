@@ -70,7 +70,7 @@ const MSTYDividendDashboard = () => {
       
     } catch (err) {
       console.error('Error loading data:', err);
-      setError('Failed to load data. Please try again later.');
+      setError(`Failed to load data: ${err.message || 'Unknown error'}. Please check your API key configuration.`);
     } finally {
       setLoading(false);
     }
@@ -202,9 +202,18 @@ const MSTYDividendDashboard = () => {
         </div>
       </div>
       
+      {/* Environment variable check notice */}
+      {!process.env.REACT_APP_FINANCE_API_KEY && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md">
+          <p className="font-bold">API Key Not Found</p>
+          <p>Finnhub API key environment variable (REACT_APP_FINANCE_API_KEY) is not configured. The dashboard will use fallback data.</p>
+        </div>
+      )}
+      
       {/* Error message */}
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md">
+          <p className="font-bold">Error</p>
           <p>{error}</p>
           <button 
             onClick={handleRefresh}
