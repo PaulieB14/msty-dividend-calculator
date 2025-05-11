@@ -10,9 +10,42 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f9fafb;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Dark Mode Styles */
+body.dark {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+/* Smooth transitions for dark/light mode toggle */
+.container,
+.card,
+button,
+input,
+h1, h2, h3, h4, h5, h6,
+p, span, div {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* TradingView Widget Container Styles */
+#tradingview_msty iframe {
+  border-radius: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .recharts-wrapper {
+    font-size: 12px;
+  }
+  
+  #tradingview_msty {
+    height: 300px !important;
+  }
 }
