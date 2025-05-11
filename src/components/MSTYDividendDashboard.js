@@ -26,6 +26,7 @@ const MSTYDividendDashboard = () => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [darkMode, setDarkMode] = useState(false);
 
   // State for user input
   const [investmentAmount, setInvestmentAmount] = useState(10000);
@@ -97,6 +98,16 @@ const MSTYDividendDashboard = () => {
       setRefreshCounter(prev => prev + 1);
     }, 300000);
     
+    // Check if dark mode preference exists in localStorage
+    const savedDarkMode = localStorage.getItem('mstyDarkMode');
+    if (savedDarkMode !== null) {
+      setDarkMode(savedDarkMode === 'true');
+    } else {
+      // Check if user prefers dark mode at the system level
+      const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setDarkMode(prefersDarkMode);
+    }
+    
     return () => clearInterval(refreshInterval);
   }, []);
   
@@ -106,6 +117,16 @@ const MSTYDividendDashboard = () => {
       loadData();
     }
   }, [refreshCounter]);
+
+  // Update body class and localStorage when dark mode changes
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+    localStorage.setItem('mstyDarkMode', darkMode);
+  }, [darkMode]);
 
   // Function to calculate returns
   const calculateReturns = (amount) => {
@@ -204,6 +225,11 @@ const MSTYDividendDashboard = () => {
     setScenarioName(e.target.value);
   };
 
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
   // Apply preset dividend scenarios
   const applyPresetScenario = (type) => {
     switch(type) {
@@ -262,21 +288,175 @@ const MSTYDividendDashboard = () => {
     label: `${item.month} ${item.year}`
   }));
 
+  // Set TradingView chart properties
+  const tradingViewChartProps = {
+    symbol: "NASDAQ:MSTY",
+    theme: darkMode ? "dark" : "light",
+    width: "100%",
+    height: 400,
+    interval: "D",
+    timezone: "Etc/UTC",
+    style: "1",
+    locale: "en",
+    enable_publishing: false,
+    allow_symbol_change: false,
+    save_image: false,
+    container_id: "tradingview_msty",
+    hide_side_toolbar: false
+  };
+
+  // Format class names based on dark mode
+  const getThemeClasses = {
+    container: darkMode 
+      ? "bg-gray-900 text-white p-6 rounded-lg shadow-lg max-w-6xl mx-auto" 
+      : "bg-slate-50 p-6 rounded-lg shadow-lg max-w-6xl mx-auto",
+    card: darkMode 
+      ? "bg-gray-800 p-6 rounded-lg shadow-md" 
+      : "bg-white p-6 rounded-lg shadow-md",
+    statsCard: darkMode 
+      ? "bg-gray-800 p-4 rounded-lg shadow-md" 
+      : "bg-white p-4 rounded-lg shadow-md",
+    button: darkMode 
+      ? "bg-indigo-900 text-indigo-100 px-3 py-1 rounded-md hover:bg-indigo-800" 
+      : "bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200",
+    refreshButton: darkMode 
+      ? "bg-indigo-900 text-indigo-100 px-3 py-1 rounded-md hover:bg-indigo-800 flex items-center" 
+      : "bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 flex items-center",
+    scenario: darkMode 
+      ? "mb-6 p-4 border border-dashed border-gray-600 rounded-md bg-gray-800" 
+      : "mb-6 p-4 border border-dashed border-gray-300 rounded-md bg-gray-50",
+    bullishBtn: darkMode 
+      ? "bg-green-900 text-green-100 px-3 py-1 rounded-md hover:bg-green-800" 
+      : "bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200",
+    bearishBtn: darkMode 
+      ? "bg-red-900 text-red-100 px-3 py-1 rounded-md hover:bg-red-800" 
+      : "bg-red-100 text-red-700 px-3 py-1 rounded-md hover:bg-red-200",
+    peakBtn: darkMode 
+      ? "bg-purple-900 text-purple-100 px-3 py-1 rounded-md hover:bg-purple-800" 
+      : "bg-purple-100 text-purple-700 px-3 py-1 rounded-md hover:bg-purple-200",
+    minimumBtn: darkMode 
+      ? "bg-amber-900 text-amber-100 px-3 py-1 rounded-md hover:bg-amber-800" 
+      : "bg-amber-100 text-amber-700 px-3 py-1 rounded-md hover:bg-amber-200",
+    resetBtn: darkMode 
+      ? "bg-gray-700 text-gray-200 px-3 py-1 rounded-md hover:bg-gray-600" 
+      : "bg-gray-100 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-200",
+    input: darkMode 
+      ? "border border-gray-600 bg-gray-700 rounded-md px-4 py-2 w-full text-white" 
+      : "border border-gray-300 rounded-md px-4 py-2 w-full",
+    checkbox: darkMode 
+      ? "mr-2 h-4 w-4 text-indigo-600 bg-gray-700 border-gray-600" 
+      : "mr-2 h-4 w-4 text-blue-600",
+    title: darkMode 
+      ? "text-3xl font-bold text-indigo-400 mb-2" 
+      : "text-3xl font-bold text-blue-800 mb-2",
+    subtitle: darkMode 
+      ? "text-2xl font-bold text-gray-200 mb-4" 
+      : "text-2xl font-bold text-gray-800 mb-4",
+    chartTitle: darkMode 
+      ? "text-xl font-bold text-gray-200 mb-4" 
+      : "text-xl font-bold text-gray-800 mb-4",
+    scenarioBanner: darkMode 
+      ? "mb-4 p-3 bg-indigo-900 border-l-4 border-indigo-500 rounded-md" 
+      : "mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md",
+    scenarioText: darkMode 
+      ? "text-indigo-100 font-medium" 
+      : "text-blue-800 font-medium",
+    sharesCard: darkMode 
+      ? "bg-indigo-900 p-4 rounded-md" 
+      : "bg-blue-50 p-4 rounded-md",
+    sharesText: darkMode 
+      ? "text-2xl font-bold text-indigo-200" 
+      : "text-2xl font-bold text-blue-700",
+    monthlyCard: darkMode 
+      ? "bg-green-900 p-4 rounded-md" 
+      : "bg-green-50 p-4 rounded-md",
+    monthlyText: darkMode 
+      ? "text-2xl font-bold text-green-200" 
+      : "text-2xl font-bold text-green-700",
+    annualCard: darkMode 
+      ? "bg-purple-900 p-4 rounded-md" 
+      : "bg-purple-50 p-4 rounded-md",
+    annualText: darkMode 
+      ? "text-2xl font-bold text-purple-200" 
+      : "text-2xl font-bold text-purple-700",
+    returnCard: darkMode 
+      ? "bg-amber-900 p-4 rounded-md" 
+      : "bg-amber-50 p-4 rounded-md",
+    returnText: darkMode 
+      ? "text-2xl font-bold text-amber-200" 
+      : "text-2xl font-bold text-amber-700",
+    tableHeader: darkMode 
+      ? "bg-gray-900" 
+      : "bg-gray-100",
+    tableRow: darkMode 
+      ? "even:bg-gray-800 odd:bg-gray-900" 
+      : "even:bg-white odd:bg-gray-50",
+    errorBanner: darkMode 
+      ? "bg-red-900 border-l-4 border-red-600 text-red-100 p-4 mb-6 rounded-md" 
+      : "bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md",
+    warningBanner: darkMode 
+      ? "bg-yellow-900 border-l-4 border-yellow-600 text-yellow-100 p-4 mb-6 rounded-md" 
+      : "bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md",
+  };
+
+  // TradingView Widget initialization script
+  useEffect(() => {
+    // Only load TradingView script if not already loaded
+    if (!document.getElementById('tradingviewScript')) {
+      const script = document.createElement('script');
+      script.id = 'tradingviewScript';
+      script.src = 'https://s3.tradingview.com/tv.js';
+      script.async = true;
+      script.onload = () => {
+        if (typeof window.TradingView !== 'undefined') {
+          new window.TradingView.widget({
+            ...tradingViewChartProps,
+            theme: darkMode ? "dark" : "light", // Update theme if changed
+          });
+        }
+      };
+      document.body.appendChild(script);
+    } else if (typeof window.TradingView !== 'undefined' && document.getElementById('tradingview_msty')) {
+      // If script already loaded but need to update the chart (e.g., due to theme change)
+      new window.TradingView.widget({
+        ...tradingViewChartProps,
+        theme: darkMode ? "dark" : "light",
+      });
+    }
+  }, [darkMode]);
+
   return (
-    <div className="bg-slate-50 p-6 rounded-lg shadow-lg max-w-6xl mx-auto">
-      <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-blue-800 mb-2">MSTY Dividend Calculator Dashboard</h1>
-        <p className="text-gray-600">Calculate expected returns from MSTY based on real-time data</p>
+    <div className={getThemeClasses.container}>
+      <div className="mb-6 text-center relative">
+        <h1 className={getThemeClasses.title}>MSTY Dividend Calculator Dashboard</h1>
+        <p className={darkMode ? "text-gray-400" : "text-gray-600"}>Calculate expected returns from MSTY based on real-time data</p>
+        
+        {/* Dark Mode Toggle */}
+        <button 
+          onClick={toggleDarkMode} 
+          className="absolute right-0 top-0 p-2 rounded-full"
+          aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {darkMode ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
         
         {/* Refresh status and button */}
         <div className="mt-3 flex justify-center items-center space-x-2">
-          <span className="text-sm text-gray-500">
+          <span className={darkMode ? "text-sm text-gray-400" : "text-sm text-gray-500"}>
             Last updated: {lastUpdated || 'Never'}
           </span>
           <button 
             onClick={handleRefresh}
             disabled={loading}
-            className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 flex items-center"
+            className={getThemeClasses.refreshButton}
           >
             <svg 
               className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} 
@@ -294,7 +474,7 @@ const MSTYDividendDashboard = () => {
       
       {/* Environment variable check notice */}
       {!process.env.REACT_APP_FINANCE_API_KEY && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md">
+        <div className={getThemeClasses.warningBanner}>
           <p className="font-bold">API Key Not Found</p>
           <p>Finnhub API key environment variable (REACT_APP_FINANCE_API_KEY) is not configured. The dashboard will use fallback data.</p>
         </div>
@@ -302,12 +482,12 @@ const MSTYDividendDashboard = () => {
       
       {/* Error message */}
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md">
+        <div className={getThemeClasses.errorBanner}>
           <p className="font-bold">Error</p>
           <p>{error}</p>
           <button 
             onClick={handleRefresh}
-            className="mt-2 text-red-700 underline hover:no-underline"
+            className={darkMode ? "mt-2 text-red-200 underline hover:no-underline" : "mt-2 text-red-700 underline hover:no-underline"}
           >
             Try again
           </button>
@@ -317,45 +497,62 @@ const MSTYDividendDashboard = () => {
       {/* Loading state */}
       {loading && !error && (
         <div className="flex justify-center items-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          <p className="ml-3 text-gray-600">Loading latest data...</p>
+          <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${darkMode ? 'border-indigo-400' : 'border-blue-500'}`}></div>
+          <p className={darkMode ? "ml-3 text-gray-300" : "ml-3 text-gray-600"}>Loading latest data...</p>
         </div>
       )}
       
       {/* Main content (shown when not loading and no error) */}
       {!loading && !error && (
         <>
+          {/* TradingView Chart Section */}
+          <div className={`${getThemeClasses.card} mb-8`}>
+            <h2 className={getThemeClasses.chartTitle}>MSTY Price Chart</h2>
+            <div className="h-96 mt-4">
+              <div id="tradingview_msty" style={{ height: '100%', width: '100%' }}></div>
+            </div>
+            <p className={darkMode ? "text-xs text-gray-400 mt-2" : "text-xs text-gray-500 mt-2"}>
+              Chart powered by TradingView
+            </p>
+          </div>
+          
           {/* Key stats section */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-8">
-            <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500">
-              <h2 className="text-lg font-semibold text-gray-700">Current Price</h2>
+            <div className={`${getThemeClasses.statsCard} border-l-4 border-blue-500`}>
+              <h2 className={darkMode ? "text-lg font-semibold text-gray-300" : "text-lg font-semibold text-gray-700"}>Current Price</h2>
               <div className="flex items-baseline">
-                <p className="text-3xl font-bold text-blue-700">${priceData.currentPrice.toFixed(2)}</p>
-                <span className={`ml-2 text-sm ${priceData.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={darkMode ? "text-3xl font-bold text-blue-300" : "text-3xl font-bold text-blue-700"}>
+                  ${priceData.currentPrice.toFixed(2)}
+                </p>
+                <span className={`ml-2 text-sm ${priceData.change >= 0 ? (darkMode ? 'text-green-300' : 'text-green-600') : (darkMode ? 'text-red-300' : 'text-red-600')}`}>
                   {priceData.change >= 0 ? '+' : ''}{priceData.change.toFixed(2)} ({priceData.percentChange.toFixed(2)}%)
                 </span>
               </div>
-              <p className="text-gray-500 text-xs mt-1">As of {priceData.timestamp}</p>
+              <p className={darkMode ? "text-gray-400 text-xs mt-1" : "text-gray-500 text-xs mt-1"}>As of {priceData.timestamp}</p>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500">
-              <h2 className="text-lg font-semibold text-gray-700">Avg Monthly Dividend</h2>
-              <p className="text-3xl font-bold text-green-700">${averageMonthlyDividend.toFixed(4)}</p>
-              <p className="text-gray-500 text-xs mt-1">Per share</p>
+            <div className={`${getThemeClasses.statsCard} border-l-4 border-green-500`}>
+              <h2 className={darkMode ? "text-lg font-semibold text-gray-300" : "text-lg font-semibold text-gray-700"}>Avg Monthly Dividend</h2>
+              <p className={darkMode ? "text-3xl font-bold text-green-300" : "text-3xl font-bold text-green-700"}>
+                ${averageMonthlyDividend.toFixed(4)}
+              </p>
+              <p className={darkMode ? "text-gray-400 text-xs mt-1" : "text-gray-500 text-xs mt-1"}>Per share</p>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500">
-              <h2 className="text-lg font-semibold text-gray-700">Annual Yield</h2>
-              <p className="text-3xl font-bold text-purple-700">{annualYield.toFixed(2)}%</p>
-              <p className="text-gray-500 text-xs mt-1">Based on current price</p>
+            <div className={`${getThemeClasses.statsCard} border-l-4 border-purple-500`}>
+              <h2 className={darkMode ? "text-lg font-semibold text-gray-300" : "text-lg font-semibold text-gray-700"}>Annual Yield</h2>
+              <p className={darkMode ? "text-3xl font-bold text-purple-300" : "text-3xl font-bold text-purple-700"}>
+                {annualYield.toFixed(2)}%
+              </p>
+              <p className={darkMode ? "text-gray-400 text-xs mt-1" : "text-gray-500 text-xs mt-1"}>Based on current price</p>
             </div>
             
-            <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-amber-500">
-              <h2 className="text-lg font-semibold text-gray-700">Latest Dividend</h2>
-              <p className="text-3xl font-bold text-amber-700">
+            <div className={`${getThemeClasses.statsCard} border-l-4 border-amber-500`}>
+              <h2 className={darkMode ? "text-lg font-semibold text-gray-300" : "text-lg font-semibold text-gray-700"}>Latest Dividend</h2>
+              <p className={darkMode ? "text-3xl font-bold text-amber-300" : "text-3xl font-bold text-amber-700"}>
                 ${dividendHistory.length > 0 ? dividendHistory[0].dividend.toFixed(4) : '0.00'}
               </p>
-              <p className="text-gray-500 text-xs mt-1">
+              <p className={darkMode ? "text-gray-400 text-xs mt-1" : "text-gray-500 text-xs mt-1"}>
                 {dividendHistory.length > 0 
                   ? `${dividendHistory[0].month} ${dividendHistory[0].year} (${dividendHistory[0].yield.toFixed(2)}%)`
                   : 'No data available'}
@@ -364,31 +561,35 @@ const MSTYDividendDashboard = () => {
           </div>
           
           {/* Calculator section */}
-          <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Dividend Calculator</h2>
+          <div className={`mb-8 ${getThemeClasses.card}`}>
+            <h2 className={getThemeClasses.subtitle}>Dividend Calculator</h2>
             
             <div className="mb-6">
-              <label className="block text-gray-700 font-semibold mb-2">Investment Amount ($)</label>
+              <label className={darkMode ? "block text-gray-300 font-semibold mb-2" : "block text-gray-700 font-semibold mb-2"}>
+                Investment Amount ($)
+              </label>
               <input
                 type="number"
                 value={investmentAmount}
                 onChange={handleAmountChange}
-                className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                className={getThemeClasses.input}
                 min="1"
               />
               
               <div className="flex flex-wrap gap-2 mt-3">
-                <button onClick={() => handlePresetAmount(1000)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">$1,000</button>
-                <button onClick={() => handlePresetAmount(5000)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">$5,000</button>
-                <button onClick={() => handlePresetAmount(10000)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">$10,000</button>
-                <button onClick={() => handlePresetAmount(25000)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">$25,000</button>
-                <button onClick={() => handlePresetAmount(50000)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">$50,000</button>
+                <button onClick={() => handlePresetAmount(1000)} className={getThemeClasses.button}>$1,000</button>
+                <button onClick={() => handlePresetAmount(5000)} className={getThemeClasses.button}>$5,000</button>
+                <button onClick={() => handlePresetAmount(10000)} className={getThemeClasses.button}>$10,000</button>
+                <button onClick={() => handlePresetAmount(25000)} className={getThemeClasses.button}>$25,000</button>
+                <button onClick={() => handlePresetAmount(50000)} className={getThemeClasses.button}>$50,000</button>
               </div>
             </div>
             
             {/* Custom dividend scenario section */}
-            <div className="mb-6 p-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-800 mb-3">Dividend Scenario Builder</h3>
+            <div className={getThemeClasses.scenario}>
+              <h3 className={darkMode ? "text-lg font-bold text-gray-200 mb-3" : "text-lg font-bold text-gray-800 mb-3"}>
+                Dividend Scenario Builder
+              </h3>
               
               <div className="mb-4">
                 <div className="flex items-center mb-3">
@@ -397,9 +598,9 @@ const MSTYDividendDashboard = () => {
                     id="useCustomDividend"
                     checked={useCustomDividend}
                     onChange={handleUseCustomDividendChange}
-                    className="mr-2 h-4 w-4 text-blue-600"
+                    className={getThemeClasses.checkbox}
                   />
-                  <label htmlFor="useCustomDividend" className="text-gray-700 font-medium">
+                  <label htmlFor="useCustomDividend" className={darkMode ? "text-gray-300 font-medium" : "text-gray-700 font-medium"}>
                     Use custom monthly dividend amount
                   </label>
                 </div>
@@ -407,7 +608,9 @@ const MSTYDividendDashboard = () => {
                 {useCustomDividend && (
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-gray-700 text-sm mb-1">Custom Monthly Dividend ($)</label>
+                      <label className={darkMode ? "block text-gray-300 text-sm mb-1" : "block text-gray-700 text-sm mb-1"}>
+                        Custom Monthly Dividend ($)
+                      </label>
                       <input
                         type="number"
                         value={customDividendAmount}
@@ -415,18 +618,20 @@ const MSTYDividendDashboard = () => {
                         step="0.0001"
                         min="0"
                         placeholder={`Average: ${averageMonthlyDividend.toFixed(4)}`}
-                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                        className={getThemeClasses.input}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-gray-700 text-sm mb-1">Scenario Name (Optional)</label>
+                      <label className={darkMode ? "block text-gray-300 text-sm mb-1" : "block text-gray-700 text-sm mb-1"}>
+                        Scenario Name (Optional)
+                      </label>
                       <input
                         type="text"
                         value={scenarioName}
                         onChange={handleScenarioNameChange}
                         placeholder="e.g., Bull Market, Bear Market"
-                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                        className={getThemeClasses.input}
                       />
                     </div>
                   </div>
@@ -436,31 +641,31 @@ const MSTYDividendDashboard = () => {
               <div className="flex flex-wrap gap-2">
                 <button 
                   onClick={() => applyPresetScenario('bullish')} 
-                  className="bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200"
+                  className={getThemeClasses.bullishBtn}
                 >
                   Bullish (+50%)
                 </button>
                 <button 
                   onClick={() => applyPresetScenario('bearish')} 
-                  className="bg-red-100 text-red-700 px-3 py-1 rounded-md hover:bg-red-200"
+                  className={getThemeClasses.bearishBtn}
                 >
                   Bearish (-50%)
                 </button>
                 <button 
                   onClick={() => applyPresetScenario('highest')} 
-                  className="bg-purple-100 text-purple-700 px-3 py-1 rounded-md hover:bg-purple-200"
+                  className={getThemeClasses.peakBtn}
                 >
                   Peak Performance
                 </button>
                 <button 
                   onClick={() => applyPresetScenario('lowest')} 
-                  className="bg-amber-100 text-amber-700 px-3 py-1 rounded-md hover:bg-amber-200"
+                  className={getThemeClasses.minimumBtn}
                 >
                   Minimum Performance
                 </button>
                 <button 
                   onClick={() => applyPresetScenario('reset')} 
-                  className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-200"
+                  className={getThemeClasses.resetBtn}
                 >
                   Reset to Average
                 </button>
@@ -471,8 +676,8 @@ const MSTYDividendDashboard = () => {
               <>
                 {/* Scenario banner if using custom dividend */}
                 {calculatedResults.isCustomScenario && (
-                  <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md">
-                    <p className="text-blue-800 font-medium">
+                  <div className={getThemeClasses.scenarioBanner}>
+                    <p className={getThemeClasses.scenarioText}>
                       <span className="mr-2">📊</span>
                       {calculatedResults.scenarioName}: Using ${parseFloat(customDividendAmount).toFixed(4)} monthly dividend per share 
                       {averageMonthlyDividend > 0 ? 
@@ -483,26 +688,26 @@ const MSTYDividendDashboard = () => {
                 )}
               
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-md">
-                    <h3 className="text-gray-700 font-semibold">Shares Owned</h3>
-                    <p className="text-2xl font-bold text-blue-700">{calculatedResults.sharesOwned}</p>
+                  <div className={getThemeClasses.sharesCard}>
+                    <h3 className={darkMode ? "text-gray-300 font-semibold" : "text-gray-700 font-semibold"}>Shares Owned</h3>
+                    <p className={getThemeClasses.sharesText}>{calculatedResults.sharesOwned}</p>
                   </div>
                   
-                  <div className="bg-green-50 p-4 rounded-md">
-                    <h3 className="text-gray-700 font-semibold">Expected Monthly Income</h3>
-                    <p className="text-2xl font-bold text-green-700">${calculatedResults.expectedMonthlyDividend}</p>
+                  <div className={getThemeClasses.monthlyCard}>
+                    <h3 className={darkMode ? "text-gray-300 font-semibold" : "text-gray-700 font-semibold"}>Expected Monthly Income</h3>
+                    <p className={getThemeClasses.monthlyText}>${calculatedResults.expectedMonthlyDividend}</p>
                   </div>
                   
-                  <div className="bg-purple-50 p-4 rounded-md">
-                    <h3 className="text-gray-700 font-semibold">Expected Annual Income</h3>
-                    <p className="text-2xl font-bold text-purple-700">${calculatedResults.expectedAnnualDividend}</p>
+                  <div className={getThemeClasses.annualCard}>
+                    <h3 className={darkMode ? "text-gray-300 font-semibold" : "text-gray-700 font-semibold"}>Expected Annual Income</h3>
+                    <p className={getThemeClasses.annualText}>${calculatedResults.expectedAnnualDividend}</p>
                   </div>
                   
-                  <div className="bg-amber-50 p-4 rounded-md">
-                    <h3 className="text-gray-700 font-semibold">
+                  <div className={getThemeClasses.returnCard}>
+                    <h3 className={darkMode ? "text-gray-300 font-semibold" : "text-gray-700 font-semibold"}>
                       {calculatedResults.isCustomScenario ? 'Projected Annual Yield' : '12-Month Historical Return'}
                     </h3>
-                    <p className="text-2xl font-bold text-amber-700">
+                    <p className={getThemeClasses.returnText}>
                       {calculatedResults.isCustomScenario 
                         ? `${calculatedResults.expectedAnnualYieldPercentage}%` 
                         : `$${calculatedResults.historicalReturn}`}
@@ -516,36 +721,93 @@ const MSTYDividendDashboard = () => {
           {/* Charts section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Dividend history chart */}
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">MSTY Monthly Dividend History</h2>
+            <div className={getThemeClasses.card}>
+              <h2 className={getThemeClasses.chartTitle}>MSTY Monthly Dividend History</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" angle={-45} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 'auto']} />
-                    <Tooltip formatter={(value) => [`$${value}`, 'Dividend']} />
-                    <ReferenceLine y={averageMonthlyDividend} stroke="red" strokeDasharray="3 3" label="Average" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
+                    <XAxis 
+                      dataKey="label" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={60} 
+                      tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
+                    />
+                    <YAxis 
+                      domain={[0, 'auto']}
+                      tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`$${value}`, 'Dividend']} 
+                      contentStyle={{ 
+                        backgroundColor: darkMode ? '#374151' : '#fff', 
+                        borderColor: darkMode ? '#4B5563' : '#e5e7eb',
+                        color: darkMode ? '#F3F4F6' : '#111827'
+                      }}
+                    />
+                    <ReferenceLine 
+                      y={averageMonthlyDividend} 
+                      stroke={darkMode ? "#EF4444" : "red"} 
+                      strokeDasharray="3 3" 
+                      label={{ 
+                        value: "Average", 
+                        fill: darkMode ? "#F87171" : "#B91C1C",
+                        position: 'insideBottomRight'
+                      }} 
+                    />
                     {useCustomDividend && customDividendAmount && (
-                      <ReferenceLine y={parseFloat(customDividendAmount)} stroke="blue" strokeDasharray="3 3" label="Custom" />
+                      <ReferenceLine 
+                        y={parseFloat(customDividendAmount)} 
+                        stroke={darkMode ? "#60A5FA" : "blue"} 
+                        strokeDasharray="3 3" 
+                        label={{ 
+                          value: "Custom", 
+                          fill: darkMode ? "#93C5FD" : "#1D4ED8",
+                          position: 'insideTopRight'
+                        }} 
+                      />
                     )}
-                    <Bar dataKey="dividend" fill="#4f46e5" name="Dividend" />
+                    <Bar dataKey="dividend" fill={darkMode ? "#6366F1" : "#4F46E5"} name="Dividend" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
             
             {/* Dividend yield chart */}
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">MSTY Monthly Yield % History</h2>
+            <div className={getThemeClasses.card}>
+              <h2 className={getThemeClasses.chartTitle}>MSTY Monthly Yield % History</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" angle={-45} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 'auto']} />
-                    <Tooltip formatter={(value) => [`${value}%`, 'Yield']} />
-                    <Line type="monotone" dataKey="yield" stroke="#7e22ce" name="Yield %" dot={{ r: 3 }} strokeWidth={2} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
+                    <XAxis 
+                      dataKey="label" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={60} 
+                      tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
+                    />
+                    <YAxis 
+                      domain={[0, 'auto']}
+                      tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`${value}%`, 'Yield']} 
+                      contentStyle={{ 
+                        backgroundColor: darkMode ? '#374151' : '#fff', 
+                        borderColor: darkMode ? '#4B5563' : '#e5e7eb',
+                        color: darkMode ? '#F3F4F6' : '#111827'
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="yield" 
+                      stroke={darkMode ? "#A78BFA" : "#7E22CE"} 
+                      name="Yield %" 
+                      dot={{ r: 3, fill: darkMode ? "#A78BFA" : "#7E22CE" }} 
+                      strokeWidth={2} 
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -554,8 +816,8 @@ const MSTYDividendDashboard = () => {
           
           {/* Returns chart (based on investment) */}
           {calculatedResults && (
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
+            <div className={getThemeClasses.card + " mb-8"}>
+              <h2 className={getThemeClasses.chartTitle}>
                 {calculatedResults.isCustomScenario 
                   ? `Projected Monthly Returns (${calculatedResults.scenarioName})` 
                   : `Expected Monthly Returns`} 
@@ -568,13 +830,29 @@ const MSTYDividendDashboard = () => {
                       ? calculatedResults.projectedReturns 
                       : calculatedResults.monthlyReturns}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" angle={-45} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 'auto']} />
-                    <Tooltip formatter={(value) => [`$${value}`, 'Return']} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#374151" : "#e5e7eb"} />
+                    <XAxis 
+                      dataKey="label" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={60} 
+                      tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
+                    />
+                    <YAxis 
+                      domain={[0, 'auto']}
+                      tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`$${value}`, 'Return']} 
+                      contentStyle={{ 
+                        backgroundColor: darkMode ? '#374151' : '#fff', 
+                        borderColor: darkMode ? '#4B5563' : '#e5e7eb',
+                        color: darkMode ? '#F3F4F6' : '#111827'
+                      }}
+                    />
                     <Bar 
                       dataKey="return" 
-                      fill={calculatedResults.isCustomScenario ? "#0891b2" : "#16a34a"} 
+                      fill={calculatedResults.isCustomScenario ? (darkMode ? "#0E7490" : "#0891B2") : (darkMode ? "#059669" : "#16A34A")} 
                       name="Monthly Return" 
                     />
                   </BarChart>
@@ -582,7 +860,7 @@ const MSTYDividendDashboard = () => {
               </div>
               
               {calculatedResults.isCustomScenario && (
-                <div className="mt-2 text-xs text-gray-500 italic">
+                <div className={darkMode ? "mt-2 text-xs text-gray-400 italic" : "mt-2 text-xs text-gray-500 italic"}>
                   Note: This chart shows projected returns based on the custom dividend amount of ${parseFloat(customDividendAmount).toFixed(4)} per share.
                 </div>
               )}
@@ -590,27 +868,35 @@ const MSTYDividendDashboard = () => {
           )}
           
           {/* Dividend history table */}
-          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Dividend History</h2>
+          <div className={getThemeClasses.card + " mb-8"}>
+            <h2 className={getThemeClasses.chartTitle}>Dividend History</h2>
             <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead className="bg-gray-100">
+              <table className={darkMode ? "min-w-full bg-gray-800" : "min-w-full bg-white"}>
+                <thead className={getThemeClasses.tableHeader}>
                   <tr>
-                    <th className="py-2 px-4 border-b text-left">Date</th>
-                    <th className="py-2 px-4 border-b text-right">Amount</th>
-                    <th className="py-2 px-4 border-b text-right">Yield</th>
-                    <th className="py-2 px-4 border-b text-left">Ex-Dividend Date</th>
-                    <th className="py-2 px-4 border-b text-left">Payment Date</th>
+                    <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-left text-gray-300" : "py-2 px-4 border-b text-left"}>Date</th>
+                    <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-right text-gray-300" : "py-2 px-4 border-b text-right"}>Amount</th>
+                    <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-right text-gray-300" : "py-2 px-4 border-b text-right"}>Yield</th>
+                    <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-left text-gray-300" : "py-2 px-4 border-b text-left"}>Ex-Dividend Date</th>
+                    <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-left text-gray-300" : "py-2 px-4 border-b text-left"}>Payment Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dividendHistory.map((dividend, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="py-2 px-4 border-b">{dividend.month} {dividend.year}</td>
-                      <td className="py-2 px-4 border-b text-right">${dividend.dividend.toFixed(4)}</td>
-                      <td className="py-2 px-4 border-b text-right">{dividend.yield.toFixed(2)}%</td>
-                      <td className="py-2 px-4 border-b">{dividend.exDate || 'N/A'}</td>
-                      <td className="py-2 px-4 border-b">{dividend.payDate || 'N/A'}</td>
+                    <tr key={index} className={index % 2 === 0 ? (darkMode ? 'bg-gray-900' : 'bg-gray-50') : ''}>
+                      <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-gray-300" : "py-2 px-4 border-b"}>{dividend.month} {dividend.year}</td>
+                      <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-right text-gray-300" : "py-2 px-4 border-b text-right"}>
+                        ${dividend.dividend.toFixed(4)}
+                      </td>
+                      <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-right text-gray-300" : "py-2 px-4 border-b text-right"}>
+                        {dividend.yield.toFixed(2)}%
+                      </td>
+                      <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-gray-300" : "py-2 px-4 border-b"}>
+                        {dividend.exDate || 'N/A'}
+                      </td>
+                      <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-gray-300" : "py-2 px-4 border-b"}>
+                        {dividend.payDate || 'N/A'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -619,15 +905,15 @@ const MSTYDividendDashboard = () => {
           </div>
           
           {/* Disclaimer section */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Important Disclaimer</h2>
-            <p className="text-gray-700 text-sm">
+          <div className={getThemeClasses.card}>
+            <h2 className={getThemeClasses.chartTitle}>Important Disclaimer</h2>
+            <p className={darkMode ? "text-gray-300 text-sm" : "text-gray-700 text-sm"}>
               This dashboard is for informational purposes only. Historical dividend payments may not be indicative of future returns. MSTY dividends can vary significantly month to month based on the fund's strategy of selling options on MicroStrategy (MSTR). The YieldMax MSTR Option Income Strategy ETF (MSTY) is an actively managed ETF that uses options strategies which may limit upside potential. Please consult with a financial advisor before making investment decisions.
             </p>
-            <p className="text-gray-700 text-sm mt-2">
+            <p className={darkMode ? "text-gray-300 text-sm mt-2" : "text-gray-700 text-sm mt-2"}>
               Data is refreshed automatically every 5 minutes or when you click the refresh button. Price data is in real-time, while dividend information may be delayed.
             </p>
-            <p className="text-gray-700 text-sm mt-2">
+            <p className={darkMode ? "text-gray-300 text-sm mt-2" : "text-gray-700 text-sm mt-2"}>
               Custom dividend scenarios are for projection purposes only and do not guarantee actual returns.
             </p>
           </div>
