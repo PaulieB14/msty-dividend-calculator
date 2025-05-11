@@ -9,6 +9,7 @@ import {
   calculateAnnualizedYield,
   checkForNewDividendData
 } from '../services/financeService';
+import TradingViewWidget from './TradingViewWidget';
 
 const MSTYDividendDashboard = () => {
   // State for price, dividend data, and loading status
@@ -288,23 +289,6 @@ const MSTYDividendDashboard = () => {
     label: `${item.month} ${item.year}`
   }));
 
-  // Set TradingView chart properties
-  const tradingViewChartProps = {
-    symbol: "NASDAQ:MSTY",
-    theme: darkMode ? "dark" : "light",
-    width: "100%",
-    height: 400,
-    interval: "D",
-    timezone: "Etc/UTC",
-    style: "1",
-    locale: "en",
-    enable_publishing: false,
-    allow_symbol_change: false,
-    save_image: false,
-    container_id: "tradingview_msty",
-    hide_side_toolbar: false
-  };
-
   // Format class names based on dark mode
   const getThemeClasses = {
     container: darkMode 
@@ -399,32 +383,6 @@ const MSTYDividendDashboard = () => {
       : "bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md",
   };
 
-  // TradingView Widget initialization script
-  useEffect(() => {
-    // Only load TradingView script if not already loaded
-    if (!document.getElementById('tradingviewScript')) {
-      const script = document.createElement('script');
-      script.id = 'tradingviewScript';
-      script.src = 'https://s3.tradingview.com/tv.js';
-      script.async = true;
-      script.onload = () => {
-        if (typeof window.TradingView !== 'undefined') {
-          new window.TradingView.widget({
-            ...tradingViewChartProps,
-            theme: darkMode ? "dark" : "light", // Update theme if changed
-          });
-        }
-      };
-      document.body.appendChild(script);
-    } else if (typeof window.TradingView !== 'undefined' && document.getElementById('tradingview_msty')) {
-      // If script already loaded but need to update the chart (e.g., due to theme change)
-      new window.TradingView.widget({
-        ...tradingViewChartProps,
-        theme: darkMode ? "dark" : "light",
-      });
-    }
-  }, [darkMode]);
-
   return (
     <div className={getThemeClasses.container}>
       <div className="mb-6 text-center relative">
@@ -509,11 +467,8 @@ const MSTYDividendDashboard = () => {
           <div className={`${getThemeClasses.card} mb-8`}>
             <h2 className={getThemeClasses.chartTitle}>MSTY Price Chart</h2>
             <div className="h-96 mt-4">
-              <div id="tradingview_msty" style={{ height: '100%', width: '100%' }}></div>
+              <TradingViewWidget darkMode={darkMode} />
             </div>
-            <p className={darkMode ? "text-xs text-gray-400 mt-2" : "text-xs text-gray-500 mt-2"}>
-              Chart powered by TradingView
-            </p>
           </div>
           
           {/* Key stats section */}
