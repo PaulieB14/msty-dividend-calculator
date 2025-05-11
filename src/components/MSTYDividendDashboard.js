@@ -29,6 +29,9 @@ const MSTYDividendDashboard = () => {
 
   // State for user input
   const [investmentAmount, setInvestmentAmount] = useState(10000);
+  const [customDividendAmount, setCustomDividendAmount] = useState('');
+  const [useCustomDividend, setUseCustomDividend] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
   const [calculatedResults, setCalculatedResults] = useState(null);
   
   // Function to load all data
@@ -112,11 +115,19 @@ const MSTYDividendDashboard = () => {
     
     const sharesOwned = amount / priceData.currentPrice;
     
-    // Expected monthly dividend based on average
-    const expectedMonthlyDividend = averageMonthlyDividend * sharesOwned;
+    // Determine which dividend amount to use based on user selection
+    const effectiveDividendAmount = useCustomDividend && customDividendAmount 
+      ? parseFloat(customDividendAmount) 
+      : averageMonthlyDividend;
+    
+    // Expected monthly dividend based on selected amount
+    const expectedMonthlyDividend = effectiveDividendAmount * sharesOwned;
     
     // Expected annual dividend
     const expectedAnnualDividend = expectedMonthlyDividend * 12;
+    
+    // Calculate annualized yield based on custom or average dividend
+    const effectiveAnnualYield = (effectiveDividendAmount * 12 / priceData.currentPrice) * 100;
     
     // Calculate historical returns if invested one year ago
     // Use up to 12 most recent months
@@ -131,13 +142,32 @@ const MSTYDividendDashboard = () => {
       return: (item.dividend * sharesOwned).toFixed(2)
     }));
     
+    // For scenarios with custom dividend, create projected returns for next 12 months
+    let projectedReturns = [];
+    if (useCustomDividend && customDividendAmount) {
+      const today = new Date();
+      for (let i = 0; i < 12; i++) {
+        const futureDate = new Date(today);
+        futureDate.setMonth(today.getMonth() + i);
+        projectedReturns.push({
+          label: `${futureDate.toLocaleString('default', { month: 'short' })} ${futureDate.getFullYear()}`,
+          dividend: parseFloat(customDividendAmount),
+          return: (parseFloat(customDividendAmount) * sharesOwned).toFixed(2),
+          isProjected: true
+        });
+      }
+    }
+    
     return {
       sharesOwned: sharesOwned.toFixed(2),
       expectedMonthlyDividend: expectedMonthlyDividend.toFixed(2),
       expectedAnnualDividend: expectedAnnualDividend.toFixed(2),
-      expectedAnnualYieldPercentage: annualYield.toFixed(2),
+      expectedAnnualYieldPercentage: effectiveAnnualYield.toFixed(2),
       historicalReturn: historicalReturn.toFixed(2),
-      monthlyReturns
+      monthlyReturns,
+      projectedReturns,
+      isCustomScenario: useCustomDividend && customDividendAmount ? true : false,
+      scenarioName: scenarioName || (useCustomDividend ? 'Custom Scenario' : 'Historical Average')
     };
   };
 
@@ -146,13 +176,73 @@ const MSTYDividendDashboard = () => {
     if (!loading && !error) {
       setCalculatedResults(calculateReturns(investmentAmount));
     }
-  }, [investmentAmount, priceData, dividendHistory, averageMonthlyDividend, annualYield, loading, error]);
+  }, [investmentAmount, priceData, dividendHistory, averageMonthlyDividend, annualYield, loading, error, useCustomDividend, customDividendAmount, scenarioName]);
 
   // Handle input change
   const handleAmountChange = (e) => {
     const value = parseFloat(e.target.value);
     if (!isNaN(value) && value > 0) {
       setInvestmentAmount(value);
+    }
+  };
+
+  // Handle custom dividend amount change
+  const handleCustomDividendChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+      setCustomDividendAmount(value);
+    }
+  };
+
+  // Handle checkbox change for using custom dividend
+  const handleUseCustomDividendChange = (e) => {
+    setUseCustomDividend(e.target.checked);
+  };
+
+  // Handle scenario name change
+  const handleScenarioNameChange = (e) => {
+    setScenarioName(e.target.value);
+  };
+
+  // Apply preset dividend scenarios
+  const applyPresetScenario = (type) => {
+    switch(type) {
+      case 'bullish':
+        // Bullish scenario - 50% higher than average
+        const bullishAmount = (averageMonthlyDividend * 1.5).toFixed(4);
+        setCustomDividendAmount(bullishAmount);
+        setScenarioName('Bullish Scenario (+50%)');
+        setUseCustomDividend(true);
+        break;
+      case 'bearish':
+        // Bearish scenario - 50% lower than average
+        const bearishAmount = (averageMonthlyDividend * 0.5).toFixed(4);
+        setCustomDividendAmount(bearishAmount);
+        setScenarioName('Bearish Scenario (-50%)');
+        setUseCustomDividend(true);
+        break;
+      case 'highest':
+        // Use highest historical dividend
+        const highestDividend = Math.max(...dividendHistory.map(item => item.dividend));
+        setCustomDividendAmount(highestDividend.toFixed(4));
+        setScenarioName('Peak Performance');
+        setUseCustomDividend(true);
+        break;
+      case 'lowest':
+        // Use lowest historical dividend
+        const lowestDividend = Math.min(...dividendHistory.map(item => item.dividend));
+        setCustomDividendAmount(lowestDividend.toFixed(4));
+        setScenarioName('Minimum Performance');
+        setUseCustomDividend(true);
+        break;
+      case 'reset':
+        // Reset to historical average
+        setUseCustomDividend(false);
+        setCustomDividendAmount('');
+        setScenarioName('');
+        break;
+      default:
+        break;
     }
   };
 
@@ -296,28 +386,130 @@ const MSTYDividendDashboard = () => {
               </div>
             </div>
             
-            {calculatedResults && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-blue-50 p-4 rounded-md">
-                  <h3 className="text-gray-700 font-semibold">Shares Owned</h3>
-                  <p className="text-2xl font-bold text-blue-700">{calculatedResults.sharesOwned}</p>
+            {/* Custom dividend scenario section */}
+            <div className="mb-6 p-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-800 mb-3">Dividend Scenario Builder</h3>
+              
+              <div className="mb-4">
+                <div className="flex items-center mb-3">
+                  <input
+                    type="checkbox"
+                    id="useCustomDividend"
+                    checked={useCustomDividend}
+                    onChange={handleUseCustomDividendChange}
+                    className="mr-2 h-4 w-4 text-blue-600"
+                  />
+                  <label htmlFor="useCustomDividend" className="text-gray-700 font-medium">
+                    Use custom monthly dividend amount
+                  </label>
                 </div>
                 
-                <div className="bg-green-50 p-4 rounded-md">
-                  <h3 className="text-gray-700 font-semibold">Expected Monthly Income</h3>
-                  <p className="text-2xl font-bold text-green-700">${calculatedResults.expectedMonthlyDividend}</p>
-                </div>
-                
-                <div className="bg-purple-50 p-4 rounded-md">
-                  <h3 className="text-gray-700 font-semibold">Expected Annual Income</h3>
-                  <p className="text-2xl font-bold text-purple-700">${calculatedResults.expectedAnnualDividend}</p>
-                </div>
-                
-                <div className="bg-amber-50 p-4 rounded-md">
-                  <h3 className="text-gray-700 font-semibold">12-Month Historical Return</h3>
-                  <p className="text-2xl font-bold text-amber-700">${calculatedResults.historicalReturn}</p>
-                </div>
+                {useCustomDividend && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-gray-700 text-sm mb-1">Custom Monthly Dividend ($)</label>
+                      <input
+                        type="number"
+                        value={customDividendAmount}
+                        onChange={handleCustomDividendChange}
+                        step="0.0001"
+                        min="0"
+                        placeholder={`Average: ${averageMonthlyDividend.toFixed(4)}`}
+                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-700 text-sm mb-1">Scenario Name (Optional)</label>
+                      <input
+                        type="text"
+                        value={scenarioName}
+                        onChange={handleScenarioNameChange}
+                        placeholder="e.g., Bull Market, Bear Market"
+                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
+              
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={() => applyPresetScenario('bullish')} 
+                  className="bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200"
+                >
+                  Bullish (+50%)
+                </button>
+                <button 
+                  onClick={() => applyPresetScenario('bearish')} 
+                  className="bg-red-100 text-red-700 px-3 py-1 rounded-md hover:bg-red-200"
+                >
+                  Bearish (-50%)
+                </button>
+                <button 
+                  onClick={() => applyPresetScenario('highest')} 
+                  className="bg-purple-100 text-purple-700 px-3 py-1 rounded-md hover:bg-purple-200"
+                >
+                  Peak Performance
+                </button>
+                <button 
+                  onClick={() => applyPresetScenario('lowest')} 
+                  className="bg-amber-100 text-amber-700 px-3 py-1 rounded-md hover:bg-amber-200"
+                >
+                  Minimum Performance
+                </button>
+                <button 
+                  onClick={() => applyPresetScenario('reset')} 
+                  className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-200"
+                >
+                  Reset to Average
+                </button>
+              </div>
+            </div>
+            
+            {calculatedResults && (
+              <>
+                {/* Scenario banner if using custom dividend */}
+                {calculatedResults.isCustomScenario && (
+                  <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md">
+                    <p className="text-blue-800 font-medium">
+                      <span className="mr-2">📊</span>
+                      {calculatedResults.scenarioName}: Using ${parseFloat(customDividendAmount).toFixed(4)} monthly dividend per share 
+                      {averageMonthlyDividend > 0 ? 
+                        ` (${((parseFloat(customDividendAmount) / averageMonthlyDividend) * 100 - 100).toFixed(0)}% vs historical average)` 
+                        : ''}
+                    </p>
+                  </div>
+                )}
+              
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-md">
+                    <h3 className="text-gray-700 font-semibold">Shares Owned</h3>
+                    <p className="text-2xl font-bold text-blue-700">{calculatedResults.sharesOwned}</p>
+                  </div>
+                  
+                  <div className="bg-green-50 p-4 rounded-md">
+                    <h3 className="text-gray-700 font-semibold">Expected Monthly Income</h3>
+                    <p className="text-2xl font-bold text-green-700">${calculatedResults.expectedMonthlyDividend}</p>
+                  </div>
+                  
+                  <div className="bg-purple-50 p-4 rounded-md">
+                    <h3 className="text-gray-700 font-semibold">Expected Annual Income</h3>
+                    <p className="text-2xl font-bold text-purple-700">${calculatedResults.expectedAnnualDividend}</p>
+                  </div>
+                  
+                  <div className="bg-amber-50 p-4 rounded-md">
+                    <h3 className="text-gray-700 font-semibold">
+                      {calculatedResults.isCustomScenario ? 'Projected Annual Yield' : '12-Month Historical Return'}
+                    </h3>
+                    <p className="text-2xl font-bold text-amber-700">
+                      {calculatedResults.isCustomScenario 
+                        ? `${calculatedResults.expectedAnnualYieldPercentage}%` 
+                        : `$${calculatedResults.historicalReturn}`}
+                    </p>
+                  </div>
+                </div>
+              </>
             )}
           </div>
           
@@ -334,6 +526,9 @@ const MSTYDividendDashboard = () => {
                     <YAxis domain={[0, 'auto']} />
                     <Tooltip formatter={(value) => [`$${value}`, 'Dividend']} />
                     <ReferenceLine y={averageMonthlyDividend} stroke="red" strokeDasharray="3 3" label="Average" />
+                    {useCustomDividend && customDividendAmount && (
+                      <ReferenceLine y={parseFloat(customDividendAmount)} stroke="blue" strokeDasharray="3 3" label="Custom" />
+                    )}
                     <Bar dataKey="dividend" fill="#4f46e5" name="Dividend" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -357,21 +552,40 @@ const MSTYDividendDashboard = () => {
             </div>
           </div>
           
-          {/* Expected monthly returns chart (based on investment) */}
+          {/* Returns chart (based on investment) */}
           {calculatedResults && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Expected Monthly Returns (${investmentAmount.toLocaleString()})</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">
+                {calculatedResults.isCustomScenario 
+                  ? `Projected Monthly Returns (${calculatedResults.scenarioName})` 
+                  : `Expected Monthly Returns`} 
+                (${investmentAmount.toLocaleString()})
+              </h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={calculatedResults.monthlyReturns}>
+                  <BarChart 
+                    data={calculatedResults.isCustomScenario 
+                      ? calculatedResults.projectedReturns 
+                      : calculatedResults.monthlyReturns}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" angle={-45} textAnchor="end" height={60} />
                     <YAxis domain={[0, 'auto']} />
                     <Tooltip formatter={(value) => [`$${value}`, 'Return']} />
-                    <Bar dataKey="return" fill="#16a34a" name="Monthly Return" />
+                    <Bar 
+                      dataKey="return" 
+                      fill={calculatedResults.isCustomScenario ? "#0891b2" : "#16a34a"} 
+                      name="Monthly Return" 
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              
+              {calculatedResults.isCustomScenario && (
+                <div className="mt-2 text-xs text-gray-500 italic">
+                  Note: This chart shows projected returns based on the custom dividend amount of ${parseFloat(customDividendAmount).toFixed(4)} per share.
+                </div>
+              )}
             </div>
           )}
           
@@ -412,6 +626,9 @@ const MSTYDividendDashboard = () => {
             </p>
             <p className="text-gray-700 text-sm mt-2">
               Data is refreshed automatically every 5 minutes or when you click the refresh button. Price data is in real-time, while dividend information may be delayed.
+            </p>
+            <p className="text-gray-700 text-sm mt-2">
+              Custom dividend scenarios are for projection purposes only and do not guarantee actual returns.
             </p>
           </div>
         </>
