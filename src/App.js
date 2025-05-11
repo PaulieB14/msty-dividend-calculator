@@ -3,7 +3,7 @@ import MSTYDividendDashboard from './components/MSTYDividendDashboard';
 
 function App() {
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="min-h-screen py-8 px-4 transition-colors">
       <MSTYDividendDashboard />
     </div>
   );
