@@ -6,12 +6,14 @@
 
 // Configuration
 const MSTY_SYMBOL = 'MSTY';
-const API_KEY = process.env.REACT_APP_FINANCE_API_KEY || 'YOUR_API_KEY'; // Store your API key in .env file
+const FINNHUB_API_KEY = process.env.REACT_APP_FINANCE_API_KEY || '';
 
-// API endpoints
-const PRICE_API_URL = `https://finnhub.io/api/v1/quote?symbol=${MSTY_SYMBOL}&token=${API_KEY}`;
-const ALPHA_VANTAGE_URL = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${MSTY_SYMBOL}&apikey=${API_KEY}`;
-const BACKUP_PRICE_API = `https://api.polygon.io/v2/aggs/ticker/${MSTY_SYMBOL}/prev?apiKey=${API_KEY}`;
+// API endpoints - Using different URLs for different services
+const FINNHUB_API_URL = `https://finnhub.io/api/v1/quote?symbol=${MSTY_SYMBOL}&token=${FINNHUB_API_KEY}`;
+
+// Fallback APIs - Note: In a real implementation, you would use different API keys for these services
+const ALPHA_VANTAGE_URL = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${MSTY_SYMBOL}&apikey=demo`;
+const BACKUP_PRICE_API = `https://api.polygon.io/v2/aggs/ticker/${MSTY_SYMBOL}/prev?apiKey=demo`;
 
 /**
  * Fetches real-time price data for MSTY
@@ -19,15 +21,18 @@ const BACKUP_PRICE_API = `https://api.polygon.io/v2/aggs/ticker/${MSTY_SYMBOL}/p
  */
 export const fetchRealTimePrice = async () => {
   try {
-    // In a real implementation, this would make API calls to financial data providers
-    // For demonstration, we'll use a fetch with a try/catch block
-    const response = await fetch(PRICE_API_URL);
+    console.log('Fetching price data from Finnhub...');
+    const response = await fetch(FINNHUB_API_URL);
     
     if (!response.ok) {
       throw new Error('Price data API response was not ok');
     }
     
     const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(`Finnhub API error: ${data.error}`);
+    }
     
     return {
       currentPrice: data.c, // Current price
@@ -39,10 +44,11 @@ export const fetchRealTimePrice = async () => {
       timestamp: new Date().toLocaleString(), // Current time
     };
   } catch (error) {
-    console.error('Error fetching real-time price:', error);
+    console.error('Error fetching real-time price from Finnhub:', error);
     
     // Fallback to backup API if primary fails
     try {
+      console.log('Attempting to use backup price API...');
       const backupResponse = await fetch(BACKUP_PRICE_API);
       if (!backupResponse.ok) {
         throw new Error('Backup price API response was not ok');
@@ -89,7 +95,7 @@ const parseDividendDataFromHTML = (htmlContent) => {
   // 2. Or use a proper HTML parsing library on the server side
   
   // Extract dividend table rows
-  const dividendRegex = /Ex-Dividend Date.*?(\d{1,2}\/\d{1,2}\/\d{4}).*?Amount.*?\$(\d+\.\d+).*?Pay Date.*?(\d{1,2}\/\d{1,2}\/\d{4})/gs;
+  const dividendRegex = /Ex-Dividend Date.*?(\\d{1,2}\\/\\d{1,2}\\/\\d{4}).*?Amount.*?\\$(\\d+\\.\\d+).*?Pay Date.*?(\\d{1,2}\\/\\d{1,2}\\/\\d{4})/gs;
   const matches = [...htmlContent.matchAll(dividendRegex)];
   
   return matches.map(match => {
