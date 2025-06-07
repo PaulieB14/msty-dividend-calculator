@@ -7,7 +7,8 @@ import {
   fetchRealTimePrice, 
   fetchDividendHistory,
   calculateAnnualizedYield,
-  checkForNewDividendData
+  checkForNewDividendData,
+  forceUpdateCurrentMonth
 } from '../services/financeService';
 import TradingViewWidget from './TradingViewWidget';
 
@@ -28,6 +29,7 @@ const MSTYDividendDashboard = () => {
   const [lastUpdated, setLastUpdated] = useState('');
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
 
   // State for user input
   const [investmentAmount, setInvestmentAmount] = useState(10000);
@@ -49,8 +51,10 @@ const MSTYDividendDashboard = () => {
       // Fetch dividend history
       let dividends = await fetchDividendHistory();
       
-      // Check for new dividend data
-      dividends = await checkForNewDividendData(dividends, price.currentPrice);
+      // Check for new dividend data if auto-update is enabled
+      if (autoUpdateEnabled) {
+        dividends = await checkForNewDividendData(dividends, price.currentPrice);
+      }
       
       // Sort by date (newest first)
       dividends.sort((a, b) => {
@@ -76,6 +80,40 @@ const MSTYDividendDashboard = () => {
     } catch (err) {
       console.error('Error loading data:', err);
       setError(`Failed to load data: ${err.message || 'Unknown error'}. Please check your API key configuration.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to force update current month (for testing)
+  const forceUpdateDividend = async () => {
+    if (!priceData.currentPrice) return;
+    
+    setLoading(true);
+    try {
+      const updatedDividends = forceUpdateCurrentMonth(dividendHistory, priceData.currentPrice);
+      
+      // Sort by date (newest first)
+      updatedDividends.sort((a, b) => {
+        const dateA = new Date(b.year, getMonthNumber(b.month));
+        const dateB = new Date(a.year, getMonthNumber(a.month));
+        return dateA - dateB;
+      });
+      
+      setDividendHistory(updatedDividends);
+      
+      // Recalculate averages
+      const totalDividends = updatedDividends.reduce((sum, item) => sum + item.dividend, 0);
+      const avgDividend = totalDividends / updatedDividends.length;
+      setAverageMonthlyDividend(avgDividend);
+      
+      const yield12Month = calculateAnnualizedYield(updatedDividends, priceData.currentPrice);
+      setAnnualYield(yield12Month);
+      
+      setLastUpdated(new Date().toLocaleString());
+      
+    } catch (err) {
+      console.error('Error force updating dividend:', err);
     } finally {
       setLoading(false);
     }
@@ -109,6 +147,12 @@ const MSTYDividendDashboard = () => {
       setDarkMode(prefersDarkMode);
     }
     
+    // Check if auto-update preference exists
+    const savedAutoUpdate = localStorage.getItem('mstyAutoUpdate');
+    if (savedAutoUpdate !== null) {
+      setAutoUpdateEnabled(savedAutoUpdate === 'true');
+    }
+    
     return () => clearInterval(refreshInterval);
   }, []);
   
@@ -128,6 +172,11 @@ const MSTYDividendDashboard = () => {
     }
     localStorage.setItem('mstyDarkMode', darkMode);
   }, [darkMode]);
+
+  // Save auto-update preference
+  useEffect(() => {
+    localStorage.setItem('mstyAutoUpdate', autoUpdateEnabled);
+  }, [autoUpdateEnabled]);
 
   // Function to calculate returns
   const calculateReturns = (amount) => {
@@ -161,7 +210,9 @@ const MSTYDividendDashboard = () => {
     const monthlyReturns = dividendHistory.map(item => ({
       label: `${item.month} ${item.year}`,
       dividend: item.dividend,
-      return: (item.dividend * sharesOwned).toFixed(2)
+      return: (item.dividend * sharesOwned).toFixed(2),
+      estimated: item.estimated || false,
+      announced: item.announced || false
     }));
     
     // For scenarios with custom dividend, create projected returns for next 12 months
@@ -231,6 +282,11 @@ const MSTYDividendDashboard = () => {
     setDarkMode(!darkMode);
   };
 
+  // Toggle auto-update
+  const toggleAutoUpdate = () => {
+    setAutoUpdateEnabled(!autoUpdateEnabled);
+  };
+
   // Apply preset dividend scenarios
   const applyPresetScenario = (type) => {
     switch(type) {
@@ -289,6 +345,37 @@ const MSTYDividendDashboard = () => {
     label: `${item.month} ${item.year}`
   }));
 
+  // Custom tooltip for dividend charts
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className={`p-3 rounded-lg shadow-lg border ${darkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-300'}`}>
+          <p className="font-medium">{label}</p>
+          <p className="text-sm">
+            <span className="font-medium">Dividend: </span>
+            ${data.dividend.toFixed(4)}
+          </p>
+          <p className="text-sm">
+            <span className="font-medium">Yield: </span>
+            {data.yield.toFixed(2)}%
+          </p>
+          {data.estimated && (
+            <p className="text-xs text-yellow-500 mt-1">
+              📊 Estimated
+            </p>
+          )}
+          {data.announced && (
+            <p className="text-xs text-blue-500 mt-1">
+              🎉 Recently Announced
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
   // Format class names based on dark mode
   const getThemeClasses = {
     container: darkMode 
@@ -306,6 +393,9 @@ const MSTYDividendDashboard = () => {
     refreshButton: darkMode 
       ? "bg-indigo-900 text-indigo-100 px-3 py-1 rounded-md hover:bg-indigo-800 flex items-center" 
       : "bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200 flex items-center",
+    forceUpdateButton: darkMode 
+      ? "bg-yellow-900 text-yellow-100 px-3 py-1 rounded-md hover:bg-yellow-800 flex items-center" 
+      : "bg-yellow-100 text-yellow-700 px-3 py-1 rounded-md hover:bg-yellow-200 flex items-center",
     scenario: darkMode 
       ? "mb-6 p-4 border border-dashed border-gray-600 rounded-md bg-gray-800" 
       : "mb-6 p-4 border border-dashed border-gray-300 rounded-md bg-gray-50",
@@ -381,6 +471,9 @@ const MSTYDividendDashboard = () => {
     warningBanner: darkMode 
       ? "bg-yellow-900 border-l-4 border-yellow-600 text-yellow-100 p-4 mb-6 rounded-md" 
       : "bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md",
+    successBanner: darkMode 
+      ? "bg-green-900 border-l-4 border-green-600 text-green-100 p-4 mb-6 rounded-md" 
+      : "bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-md",
   };
 
   return (
@@ -406,27 +499,56 @@ const MSTYDividendDashboard = () => {
           )}
         </button>
         
-        {/* Refresh status and button */}
-        <div className="mt-3 flex justify-center items-center space-x-2">
+        {/* Refresh status and controls */}
+        <div className="mt-3 flex justify-center items-center space-x-4">
           <span className={darkMode ? "text-sm text-gray-400" : "text-sm text-gray-500"}>
             Last updated: {lastUpdated || 'Never'}
           </span>
-          <button 
-            onClick={handleRefresh}
-            disabled={loading}
-            className={getThemeClasses.refreshButton}
-          >
-            <svg 
-              className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg"
+          
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className={getThemeClasses.refreshButton}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {loading ? 'Refreshing...' : 'Refresh Data'}
-          </button>
+              <svg 
+                className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+            
+            <button 
+              onClick={forceUpdateDividend}
+              disabled={loading}
+              className={getThemeClasses.forceUpdateButton}
+              title="Force update current month dividend (for testing)"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Update
+            </button>
+          </div>
+        </div>
+        
+        {/* Auto-update toggle */}
+        <div className="mt-2 flex justify-center items-center space-x-2">
+          <input
+            type="checkbox"
+            id="autoUpdate"
+            checked={autoUpdateEnabled}
+            onChange={toggleAutoUpdate}
+            className={getThemeClasses.checkbox}
+          />
+          <label htmlFor="autoUpdate" className={darkMode ? "text-sm text-gray-400" : "text-sm text-gray-600"}>
+            Auto-detect new dividends
+          </label>
         </div>
       </div>
       
@@ -435,6 +557,14 @@ const MSTYDividendDashboard = () => {
         <div className={getThemeClasses.warningBanner}>
           <p className="font-bold">API Key Not Found</p>
           <p>Finnhub API key environment variable (REACT_APP_FINANCE_API_KEY) is not configured. The dashboard will use fallback data.</p>
+        </div>
+      )}
+      
+      {/* Auto-update status */}
+      {autoUpdateEnabled && (
+        <div className={getThemeClasses.successBanner}>
+          <p className="font-bold">🔄 Auto-Update Enabled</p>
+          <p>The dashboard will automatically check for new MSTY dividends. June 2025 dividend has been added!</p>
         </div>
       )}
       
@@ -511,6 +641,12 @@ const MSTYDividendDashboard = () => {
                 {dividendHistory.length > 0 
                   ? `${dividendHistory[0].month} ${dividendHistory[0].year} (${dividendHistory[0].yield.toFixed(2)}%)`
                   : 'No data available'}
+                {dividendHistory.length > 0 && dividendHistory[0].estimated && (
+                  <span className="text-yellow-500 ml-1">📊</span>
+                )}
+                {dividendHistory.length > 0 && dividendHistory[0].announced && (
+                  <span className="text-blue-500 ml-1">🎉</span>
+                )}
               </p>
             </div>
           </div>
@@ -693,14 +829,7 @@ const MSTYDividendDashboard = () => {
                       domain={[0, 'auto']}
                       tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
                     />
-                    <Tooltip 
-                      formatter={(value) => [`$${value}`, 'Dividend']} 
-                      contentStyle={{ 
-                        backgroundColor: darkMode ? '#374151' : '#fff', 
-                        borderColor: darkMode ? '#4B5563' : '#e5e7eb',
-                        color: darkMode ? '#F3F4F6' : '#111827'
-                      }}
-                    />
+                    <Tooltip content={<CustomTooltip />} />
                     <ReferenceLine 
                       y={averageMonthlyDividend} 
                       stroke={darkMode ? "#EF4444" : "red"} 
@@ -747,14 +876,7 @@ const MSTYDividendDashboard = () => {
                       domain={[0, 'auto']}
                       tick={{ fill: darkMode ? "#9CA3AF" : "#4B5563" }}
                     />
-                    <Tooltip 
-                      formatter={(value) => [`${value}%`, 'Yield']} 
-                      contentStyle={{ 
-                        backgroundColor: darkMode ? '#374151' : '#fff', 
-                        borderColor: darkMode ? '#4B5563' : '#e5e7eb',
-                        color: darkMode ? '#F3F4F6' : '#111827'
-                      }}
-                    />
+                    <Tooltip content={<CustomTooltip />} />
                     <Line 
                       type="monotone" 
                       dataKey="yield" 
@@ -834,6 +956,7 @@ const MSTYDividendDashboard = () => {
                     <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-right text-gray-300" : "py-2 px-4 border-b text-right"}>Yield</th>
                     <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-left text-gray-300" : "py-2 px-4 border-b text-left"}>Ex-Dividend Date</th>
                     <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-left text-gray-300" : "py-2 px-4 border-b text-left"}>Payment Date</th>
+                    <th className={darkMode ? "py-2 px-4 border-b border-gray-700 text-center text-gray-300" : "py-2 px-4 border-b text-center"}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -852,6 +975,12 @@ const MSTYDividendDashboard = () => {
                       <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-gray-300" : "py-2 px-4 border-b"}>
                         {dividend.payDate || 'N/A'}
                       </td>
+                      <td className={darkMode ? "py-2 px-4 border-b border-gray-700 text-center text-gray-300" : "py-2 px-4 border-b text-center"}>
+                        {dividend.estimated && <span className="text-yellow-500 text-xs">📊 Estimated</span>}
+                        {dividend.announced && <span className="text-blue-500 text-xs">🎉 Announced</span>}
+                        {dividend.updated && <span className="text-green-500 text-xs">✅ Updated</span>}
+                        {!dividend.estimated && !dividend.announced && !dividend.updated && <span className="text-gray-400 text-xs">✓ Confirmed</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -866,10 +995,10 @@ const MSTYDividendDashboard = () => {
               This dashboard is for informational purposes only. Historical dividend payments may not be indicative of future returns. MSTY dividends can vary significantly month to month based on the fund's strategy of selling options on MicroStrategy (MSTR). The YieldMax MSTR Option Income Strategy ETF (MSTY) is an actively managed ETF that uses options strategies which may limit upside potential. Please consult with a financial advisor before making investment decisions.
             </p>
             <p className={darkMode ? "text-gray-300 text-sm mt-2" : "text-gray-700 text-sm mt-2"}>
-              Data is refreshed automatically every 5 minutes or when you click the refresh button. Price data is in real-time, while dividend information may be delayed.
+              Data is refreshed automatically every 5 minutes or when you click the refresh button. Price data is in real-time, while dividend information may be delayed. The auto-update feature will attempt to detect new dividend announcements typically made 5-10 days before the ex-dividend date (usually between the 5th-10th of each month).
             </p>
             <p className={darkMode ? "text-gray-300 text-sm mt-2" : "text-gray-700 text-sm mt-2"}>
-              Custom dividend scenarios are for projection purposes only and do not guarantee actual returns.
+              Custom dividend scenarios are for projection purposes only and do not guarantee actual returns. Estimated dividends are marked with 📊 and newly announced dividends are marked with 🎉.
             </p>
           </div>
         </>
